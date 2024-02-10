@@ -1,0 +1,59 @@
+#!/usr/bin/env sh
+#=========================================================================
+# Author: Gaetan (gaetan@ictpourtous.com) - Twitter: @astsu777
+# Creation: Sun 22 Aug 2021 12:08:54
+# Last modified: Wed 26 Jul 2023 14:56:55
+# Version: 1.0
+#
+# Description: start/stop local DHCP server
+#=========================================================================
+
+#=======================
+# Requirements
+#=======================
+
+if [ "$(id -u)" != 0 ] && ! type sudo > /dev/null 2>&1; then
+	echo .
+	echo "Root privileges are required to run this script. Make sure to execute the script as root or have sudo installed!"
+	exit 2
+fi
+
+#=======================
+# Functions
+#=======================
+
+startDHCP() {
+	if [ "$(uname)" = "Darwin" ]; then
+		sudo /bin/launchctl load -w /System/Library/LaunchDaemons/bootps.plist
+		echo "DHCP server started. Modify its options in /etc/bootpd.list"
+	elif [ "$(uname)" = "Linux" ]; then
+		sudo systemctl start dhcpd4.service
+		echo "DHCP server started. Modify its options in /etc/dhcpd.conf"
+	fi
+}
+
+stopDHCP() {
+	if [ "$(uname)" = "Darwin" ]; then
+		sudo /bin/launchctl unload -w /System/Library/LaunchDaemons/bootps.plist
+	elif [ "$(uname)" = "Linux" ]; then
+		sudo systemctl stop dhcpd4.service
+	fi
+	echo "DHCP server stopped"
+}
+
+#=======================
+# DHCP
+#=======================
+
+case "$1" in
+	"--start") startDHCP ;;
+	"--stop") stopDHCP ;;
+	*)
+		echo "An action needs to be specified!
+Usage: dhcp-server <ARGUMENT>
+	--start: start the local DHCP server
+	--stop: stop the local DHCP server
+	"
+	exit 1
+	;;
+esac

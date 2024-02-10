@@ -1,0 +1,98 @@
+#!/usr/bin/env sh
+#=========================================================================
+# Author: Gaetan (gaetan@ictpourtous.com) - Twitter: @astsu777
+# Creation: Tue 28 Dec 2021 18:39:09
+# Last modified: Tue 03 Jan 2023 16:53:56
+# Version: 1.0
+#
+# Description: Web bookmarks handler
+#=========================================================================
+
+#=======================
+# Variables
+#=======================
+
+bookmarksPath="${XDG_DATA_HOME:-$HOME/.local/share}"
+bookmarksFile="bookmarks"
+
+#=======================
+# Functions
+#=======================
+
+notify() {
+	if type notify-send >/dev/null 2>&1; then notify-send "$*"; fi
+	printf '%s\n' "$*"
+}
+
+checkReq(){
+	if ! type dmenu >/dev/null 2>&1; then notify "Warning" "The package 'dmenu' is not installed, switching to FZF in CLI"; fi
+	if ! type fzf >/dev/null 2>&1; then printf "The package 'fzf' is currently not installed!" && exit 1; fi
+	[ -d "$bookmarksPath" ] || mkdir -p "$bookmarksPath"
+	[ -f "$bookmarksPath/$bookmarksFile" ] || touch "$bookmarksFile"
+}
+
+help() {
+	printf "dmenu-bookmarks: Web bookmarks manager
+options:
+--help
+	Show this help message
+--add
+	Add a new bookmark
+--copy
+	Copy a bookmark to the clipboard
+--delete
+	Delete a bookmark
+\n"
+}
+
+addUrl(){
+	if ! type dmenu >/dev/null 2>&1; then
+		printf "The description format should be: [CATEGORY] <DESCRIPTION>"
+		printf "Description: " && read -r description
+		printf "URL: " && read -r url
+	else
+		description="$(dmenu -p 'Description (Format: [CATEGORY] <DESCRIPTION>): ')"
+		url="$(dmenu -p 'URL: ')"
+	fi
+		[ -z "$description" ] && printf "A description must be provided!" && exit 2
+		[ -n "$description" ] && printf '%s\n' "$description - $url" >> "$bookmarksPath/$bookmarksFile"
+		printf '%s' "$(sort "$bookmarksPath/$bookmarksFile")" > "$bookmarksPath/$bookmarksFile"
+}
+
+delUrl(){
+	getUrl
+	sed -i --follow-symlinks "\|$url|d" "$bookmarksPath/$bookmarksFile"
+}
+
+getUrl(){
+	if ! type dmenu >/dev/null 2>&1; then
+		url="$(fzf <"$bookmarksPath/$bookmarksFile" | awk '{print $(NF)}')"
+	else
+		url="$(sort "$bookmarksPath/$bookmarksFile" | dmenu -i -l 30 -p "Bookmarks:" | awk '{print $(NF)}')"
+	fi
+	[ -z "$url" ] && exit 1
+}
+
+copyUrl(){
+	getUrl
+	printf '%s' "$url" | xclip -selection clipboard && notify "Bookmark's URL copied to clipboard"
+}
+
+openUrl(){
+	getUrl
+	if (printf '%s' "$url" | grep -Eq '(\.onion[\/].*)|(\.onion$)' ;) ; then tor=1; fi
+	if [ "$(uname)" = "Darwin" ]; then
+		if [ -n "$tor" ]; then open -a "/Applications/Tor Browser.app/Contents/MacOS/firefox" -u "$url"; else open -u "$url"; fi
+	else
+		if [ -n "$tor" ]; then tor-browser "$url"; elif pgrep surf > /dev/null 2>&1; then surf "$url"; elif pgrep qutebrowser > /dev/null 2>&1; then qutebrowser "$url"; elif [ -n "$BROWSER" ]; then "$BROWSER" "$url"; else xdg-open "$url"; fi
+	fi
+}
+
+checkReq
+case "$1" in
+	'--help') help ;;
+	'--add') addUrl ;;
+	'--delete') delUrl ;;
+	'--copy') copyUrl ;;
+	*) openUrl ;;
+esac

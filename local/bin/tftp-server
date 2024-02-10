@@ -1,0 +1,59 @@
+#!/usr/bin/env sh
+#=========================================================================
+# Author: Gaetan (gaetan@ictpourtous.com) - Twitter: @astsu777
+# Creation: Sun 22 Aug 2021 12:16:10
+# Last modified: Wed 26 Jul 2023 15:08:37
+# Version: 1.0
+#
+# Description: start/stop local TFTP server
+#=========================================================================
+
+#=======================
+# Requirements
+#=======================
+
+if [ "$(id -u)" != 0 ] && ! type sudo > /dev/null 2>&1; then
+	echo .
+	echo "Root privileges are required to run this script. Make sure to execute the script as root or have sudo installed!"
+	exit 2
+fi
+
+#=======================
+# Functions
+#=======================
+
+startTFTP() {
+	if [ "$(uname)" = "Darwin" ]; then
+		sudo launchctl load -F /System/Library/LaunchDaemons/tftp.plist
+		echo "TFTP server started. The root is located in /private/tftpboot"
+	elif [ "$(uname)" = "Linux" ]; then
+		sudo systemctl start tftpd.service
+		echo "TFTP server started. The root is located in /srv/tftp"
+	fi
+}
+
+stopTFTP() {
+	if [ "$(uname)" = "Darwin" ]; then
+		sudo launchctl unload -F /System/Library/LaunchDaemons/tftp.plist
+	elif [ "$(uname)" = "Linux" ]; then
+		sudo systemctl stop tftpd.service
+	fi
+		echo "TFTP server stopped"
+}
+
+#=======================
+# TFTP
+#=======================
+
+case "$1" in
+	"--start") startTFTP ;;
+	"--stop") stopTFTP ;;
+	*)
+		echo "An action needs to be specified!
+Usage: tftp-server <ARGUMENT>
+	--start: start the local TFTP server
+	--stop: stop the local TFTP server
+	"
+	exit 1
+	;;
+esac

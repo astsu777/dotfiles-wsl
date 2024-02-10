@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+#=========================================================================
+# Author: Gaetan (gaetan@ictpourtous.com) - Twitter: @astsu777
+# Creation: Sun 22 Aug 2021 12:16:29
+# Last modified: Thu 29 Sep 2022 22:31:23
+# Version: 1.0
+#
+# Description: execute a program in a terminal emulator
+#=========================================================================
+
+[ -z "$*" ] && exit 1
+{ "$TERMINAL" -e "$@" && exit 0 ;} || { st -e "$@" && exit 0 ;} || { kitty -e "$@" && exit 0 ;} || { alacritty -e "$@" && exit 0 ;} || { xterm -e "$@" && exit 0 ;}

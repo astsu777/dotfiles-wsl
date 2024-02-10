@@ -1,0 +1,49 @@
+#!/usr/bin/env sh
+#=========================================================================
+# Author: Gaetan (gaetan@ictpourtous.com) - Twitter: @astsu777
+# Creation: Sun 22 Aug 2021 17:03:50
+# Last modified: Sat 07 Jan 2023 08:51:08
+# Version: 1.0
+#
+# Description: easy script to archive YouTube channels/playlists/videos
+#=========================================================================
+
+#=======================
+# Requirements
+#=======================
+
+if ! type yt-dlp ffmpeg >/dev/null 2>&1; then
+	printf "The packages 'yt-dlp', 'ffmpeg' are not installed!"
+	exit 1
+fi
+
+#=======================
+# Functions
+#=======================
+
+archiveVideo() {
+	yt-dlp -q -ci --download-archive "$3"/archive_video.txt --add-metadata --embed-thumbnail --embed-subs --merge-output-format mp4 -f 'bv+ba/b' "$2" -o "$3"/'%(uploader)s-%(upload_date)s-%(title)s-%(id)s.%(ext)s'
+}
+archiveAudio() {
+	yt-dlp -q -ci --download-archive "$3"/archive_audio.txt --extract-audio --audio-format mp3 --audio-quality 0 --add-metadata --embed-subs "$2" -o "$3"/'%(uploader)s-%(upload_date)s-%(title)s-%(id)s.%(ext)s'
+}
+
+#=======================
+# Archive
+#=======================
+
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	echo "Some arguments are missing!
+Usage: yt-archive [--video|--audio] <URL> <DIRECTORY>
+
+Example: yt-archive --video https://www.youtube.com/user/astsu777 ~/Videos
+Example2: yt-archive --audio https://www.youtube.com/user/astsu777 ~/Videos
+
+Note: the '--audio' option will only archive audio in MP3 format
+"
+    exit 2
+elif [ "$1" = "--audio" ]; then
+	archiveAudio "$@"
+elif [ "$1" = "--video" ]; then
+	archiveVideo "$@"
+fi

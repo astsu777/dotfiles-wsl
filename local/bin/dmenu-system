@@ -1,0 +1,110 @@
+#!/usr/bin/env sh
+#=========================================================================
+# Author: Gaetan (gaetan@ictpourtous.com) - Twitter: @astsu777
+# Creation: Sun 22 Aug 2021 12:12:55
+# Last modified: Tue 25 Apr 2023 21:19:02
+# Version: 1.0
+#
+# Description: perform various system operations
+#=========================================================================
+
+#=======================
+# FUNCTIONS
+#=======================
+
+notify() {
+	if type notify-send >/dev/null 2>&1; then notify-send "$*"; fi
+	printf '%s\n' "$*"
+}
+
+#=======================
+# Top menu
+#=======================
+
+TOPMENU=$(printf "Display Management\nLogout/Shutdown\nNetwork Management\nMiscellaneous\nWeb Bookmarks Management\nCancel" | dmenu -i -p "Choose:")
+
+#=======================
+# Logout/shutdown
+#=======================
+
+if [ "$TOPMENU" = 'Logout/Shutdown' ]; then
+	dmenu-shutdown
+fi
+
+#=======================
+# Display management
+#=======================
+
+if [ "$TOPMENU" = 'Display Management' ]; then
+	OPTS=$(printf "Manage Screens\nToggle Virtual Terminals" | sort | dmenu -i -p "Network Management:")
+	case $OPTS in
+		"Manage Screens") exec displayselect ;;
+		"Toggle Virtual Terminals") exec vttoggle ;;
+		*) exec dmenu-system ;;
+	esac
+fi
+
+#=======================
+# Network management
+#=======================
+
+if [ "$TOPMENU" = 'Network Management' ]; then
+	OPTS=$(printf "Block Ads\nClear DNS Cache\nCloud Manager\nDHCP Server\nManage Network\nNordVPN Connection\n(Un)mount URI\nTFTP Server\nWebsites Monitor" | sort | dmenu -i -p "Network Management:")
+	case $OPTS in
+		"Block Ads") tui "$SHELL" -c "block-hosts ; $SHELL" ;;
+		"Clear DNS Cache") tui "$SHELL" -c "clear-dns-cache ; $SHELL" ;;
+		"Cloud Manager") tui "$SHELL" -c "upcloud-manager ; $SHELL" ;;
+		"DHCP Server") tui "$SHELL" -c "dhcp-server ; $SHELL" ;;
+		"Manage Network") tui 'nmtui' ;;
+		"NordVPN Connection") dmenu-nordvpn ;;
+		"(Un)mount URI") tui 'dmenu-urimount' ;;
+		"TFTP Server") tui "$SHELL" -c "tftp-server ; $SHELL" ;;
+		"Websites Monitor") tui "$SHELL" -c "websites-monitor ; $SHELL" ;;
+		*) exec dmenu-system ;;
+	esac
+fi
+
+#=======================
+# Miscellaneous
+#=======================
+
+if [ "$TOPMENU" = 'Miscellaneous' ]; then
+	OPTS=$(printf "Android Webcam\nBookmarks List\nChange Theme\nCheck Online Streams\nCheck System Queue\nClear Clipboard Manager\nListen To Radio\nMount USB Drive\nPassword List\nPlay Audio/Video\nRecord Screen/Webcam\nRun\nTake Screenshot\nToggle Compositor\nToggle Cron Jobs\nToggle Do Not Disturb\nUnmount USB Drive\nWeb Search\nWindows Manager" | sort | dmenu -i -p "Miscellaneous:")
+	case $OPTS in
+		"Android Webcam") android-webcam ;;
+		"Bookmarks List") dmenu-bookmarks ;;
+		"Change Theme") tui dmenu-theme ;;
+		"Check Online Streams") dmenu-stream ;;
+		"Check System Queue") tui "$SHELL" -c "tspool ; $SHELL" ;;
+		"Clear Clipboard Manager") rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/clipmenu*/* && notify "📋 Clipboard Manager Cleared" "The clipboard manager has been cleared" ;;
+		"Listen To Radio") dmenu-radio ;;
+		"Mount USB Drive") dmenu-mount ;;
+		"Password List") dmenu-pass ;;
+		"Play Audio/Video") dmenu-video ;;
+		"Record Screen/Webcam") dmenu-record ;;
+		"Run") dmenu-run ;;
+		"Take Screenshot") "$SCROTBIN" || dmenu-screenshot ;;
+		"Toggle Compositor") if pgrep picom > /dev/null 2>&1; then pkill picom > /dev/null 2>&1; else nohup picom > /dev/null 2>&1 ; fi ;;
+		"Toggle Cron Jobs") crontoggle ;;
+		"Toggle Do Not Disturb") notifytoggle ;;
+		"Unmount USB Drive") dmenu-umount ;;
+		"Web Search") dmenu-websearch ;;
+		"Windows Manager") dmenu-wm ;;
+		*) exec dmenu-system ;;
+	esac
+fi
+
+#=======================
+# Web bookmarks management
+#=======================
+
+if [ "$TOPMENU" = 'Web Bookmarks Management' ]; then
+	OPTS=$(printf '%s\n' "Add bookmark" "Delete bookmark" "Copy bookmark to clipboard" "Open bookmark" | sort | dmenu -i -p "Bookmarks Management:")
+	case "$OPTS" in
+		'Add bookmark') dmenu-bookmarks --add ;;
+		'Copy bookmark to clipboard') dmenu-bookmarks --copy ;;
+		'Delete bookmark') dmenu-bookmarks --delete ;;
+		'Open bookmark') dmenu-bookmarks ;;
+		*) exec dmenu-system ;;
+	esac
+fi

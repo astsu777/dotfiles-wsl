@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+#=========================================================================
+# Author: Gaetan (gaetan@ictpourtous.com) - Twitter: @astsu777
+# Creation: Sun 22 Aug 2021 12:15:19
+# Last modified: Sat 07 Jan 2023 08:48:52
+# Version: 1.0
+#
+# Description: this script finds all Git repositories and pull the changes
+#=========================================================================
+
+#====================
+# Print help if no input
+#====================
+
+if [ -z "$1" ]; then
+	echo "
+Missing argument: <PATH>
+
+Usage: ./git_all_pull <PATH> (Example: ./git-all-pull \$HOME)
+"
+	exit 1
+fi
+
+#====================
+# Variables
+#====================
+
+if [ "$(uname)" = "Darwin" ]; then
+	repositories="$(find $1 -type d -not \( -path */data -prune \) -not \( -path */.password-store -prune \) -not \( -path */Cloud -prune \) -not \( -path */.cache -prune \) -not \( -path */.emacs.d -prune \) -not \( -path */.config -prune \) -not \( -path */Downloads -prune \) -not \( -path */.vim -prune \) -name '.git' | sed 's/\/\.git//g')"
+else
+	repositories="$(find $1 -type d -not \( -path */data -prune \) -not \( -path */.password-store -prune \) -not \( -path */Cloud -prune \) -not \( -path */.cache -prune \) -not \( -path */.emacs.d -prune \) -not \( -path */.config -prune \) -not \( -path */Downloads -prune \) -not \( -path */.vim -prune \) -name '.git' -printf '%h\n')"
+fi
+
+#====================
+# Pull repositories
+#====================
+
+for i in $repositories
+do
+	echo -e "GIT repository found in \"$i\"..."
+	pull=$(mktemp)
+	git -C "$i" pull &>"$pull"
+	if grep 'Applied autostash' "$pull" > /dev/null && grep 'is up to date' "$pull" > /dev/null; then
+		echo -e "\033[32mAutostash applied. Nothing to update\033[0m"
+		echo -e "$(cat $pull)"
+		echo -e
+		rm -f "$pull" > /dev/null 2>&1
+	elif grep 'Applied autostash' "$pull" > /dev/null; then
+		echo -e "\033[33mAutostash applied. Local changes preserved\033[0m"
+		echo -e "$(cat $pull)"
+		echo -e
+		rm -f "$pull" > /dev/null 2>&1
+	elif grep 'Updating\|forced update' "$pull" > /dev/null; then
+		echo -e "\033[33mUpstream has been updated\033[0m"
+		echo -e "$(cat $pull)"
+		echo -e
+		rm -f "$pull" > /dev/null 2>&1
+	elif grep -F 'Already up to date' "$pull" > /dev/null || grep -F 'is up to date' "$pull" > /dev/null; then
+		echo -e "\033[32mNothing to update\033[0m"
+		echo -e
+		rm -f "$pull" > /dev/null 2>&1
+	elif grep -F 'Successfully rebased and updated' "$pull" > /dev/null; then
+		echo -e "\033[33mRebased and updated\033[0m"
+		echo -e
+		rm -f "$pull" > /dev/null 2>&1
+	elif grep -F 'Fast-forwarded' "$pull" > /dev/null; then
+		echo -e "\033[33mFast-forwarded\033[0m"
+		echo -e
+		rm -f "$pull" > /dev/null 2>&1
+	else
+		echo -e "\033[31mAn error occurred\033[0m"
+		echo -e "$(cat $pull)"
+		echo -e
+		rm -f "$pull" > /dev/null 2>&1
+	fi
+done

@@ -1,0 +1,30 @@
+# Colorize output of the "ls" command
+alias ls="ls --color=auto"
+
+# Colorize the output of the "grep" command
+alias grep="grep --color=auto"
+
+# If the program "colordiff" is installed, replace "diff" with it
+alias diff="colordiff"
+
+# Allow "wget" to continue a partial download
+alias wget="wget -c --content-disposition"
+
+# Modify curl User-Agent to mimic Chrome
+alias curl='curl -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" -H "accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8" -H "upgrade-insecure-requests: 1" -H "Accept-Language: en-US,en;q=0.9" -L --insecure'
+
+# Always read this specific config file
+if [[ -f "$HOME"/.ssh/config ]]; then
+	alias ssh="ssh -F ~/.ssh/config"
+fi
+
+# Do not store the public key of the remote server and accept it
+alias sssh="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+alias ssftp="sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+alias sscp="scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+# Preserve environment variables when calling "sudo"
+alias sudo="sudo -E"
+
+# Create parent directories if they do not exist
+alias mkdir="mkdir -pv"

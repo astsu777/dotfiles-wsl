@@ -1,0 +1,12 @@
+# Bind CTRL+l to clear the screen
+"\C-l": clear-screen
+
+# UP & DOWN perform history search (smarter this way)
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+
+# Enable VI mode
+set editing-mode vi
+set show-mode-in-prompt on
+set vi-cmd-mode-string "\1\e[2 q\2[N]"
+set vi-ins-mode-string "\1\e[6 q\2"

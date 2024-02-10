@@ -1,0 +1,644 @@
+# Emits a beep from PC speaker
+_alarm() {
+  ( \speaker-test --frequency 1000 --test sine )&
+    pid=$!
+    \sleep 0.2s
+    \kill -9 $pid
+}
+
+# Benchmark the SHELL (Bash & ZSH)
+_benchshell(){
+	if [[ "$SHELL" == "/bin/bash" ]]; then
+		time bash -i -c "echo -n"
+	    elif [[ "$SHELL" == "/bin/zsh" ]]; then
+		  time zsh -i -c "print -n"
+	    fi
+}
+
+# Display true colors to test terminal colors
+_colortest() {
+	echo -e "\033[0mNC (No color)"
+	  echo -e "\033[1;37mWHITE\t\033[0;30mBLACK"
+	  echo -e "\033[0;34mBLUE\t\033[1;34mLIGHT_BLUE"
+	  echo -e "\033[0;32mGREEN\t\033[1;32mLIGHT_GREEN"
+	  echo -e "\033[0;36mCYAN\t\033[1;36mLIGHT_CYAN"
+	  echo -e "\033[0;31mRED\t\033[1;31mLIGHT_RED"
+	  echo -e "\033[0;35mPURPLE\t\033[1;35mLIGHT_PURPLE"
+	  echo -e "\033[0;33mYELLOW\t\033[1;33mLIGHT_YELLOW"
+	  echo -e "\033[1;30mGRAY\t\033[0;37mLIGHT_GRAY"
+}
+
+# Create a temporary filesystem in RAM
+_mkramfs(){
+	if [ $# -lt 2 ]; then
+    echo -e "Mount a temporary partition in RAM"
+		  echo "Usage: mkramfs '<MOUNT_POINT>' '<SIZE_IN_MB>'"
+		  echo "Ex.: mkramfs /mnt 1024"
+		  echo
+	else
+		sudo mount -t tmpfs tmpfs "$1" -o size="$2"m
+	    fi
+}
+
+# Generate a strong random password
+_pwdgen(){
+	if [ "$OSTYPE" = "linux-gnu" ]; then
+		if [ -z "$1" ]; then
+    	echo -e "Create a random strong password"
+			  echo "Usage: pwdgen '<INTEGER>'"
+			  echo "Ex.: pwdgen 10 --> will create a 10 characters password"
+			  echo
+		else
+			tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' </dev/urandom | head -c "$1" ; echo
+		    fi
+	      fi
+}
+
+# Generate a strong random password
+_pwdgen-alpha(){
+	if [ "$OSTYPE" = "linux-gnu" ]; then
+		if [ -z "$1" ]; then
+    	echo -e "Create a random strong password with alphanumeric characters only"
+			  echo "Usage: pwdgen-alpha '<INTEGER>'"
+			  echo "Ex.: pwdgen-alpha 10 --> will create a 10 characters password"
+			  echo
+		else
+			tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$1" ; echo
+		    fi
+	      fi
+}
+
+# Clean Debian residual packages
+_clean-system(){
+	local pkgs=$(dpkg -l | awk '/^rc/{print $2}')
+		sudo apt purge "$pkgs"
+}
+
+# Save command's output to an image
+_cmd2jpg(){
+	if [ $# -lt 2 ]; then
+    echo -e "Save a command's output to an image"
+		  echo "Usage: cmd2jpg '<COMMAND>' '<IMAGE_FILE>'"
+		  echo "Ex.: cmd2jpg ifconfig ip.jpg"
+		  echo
+		  echo "The real command is '<COMMAND>' | convert label:@- '<IMAGE_FILE>'"
+		  echo
+	else
+		"$1" | convert label:@- "$2"
+	    fi
+}
+
+# Function to perform basic maths
+_calc() {
+	if [ -z "$1" ]; then
+    echo -e "Perform calculation in the CLI"
+		  echo "Usage: calc '<CALCULATION>'"
+		  echo "Ex.: calc 1+1"
+		  echo
+	else
+		printf "%s\n" "$*" | bc -l
+	    fi
+}
+
+# Create many files with random content
+_ttouch() {
+	if [ -z "$1" ]; then
+    echo -e "Create random binary files"
+		  echo "Usage: ttouch '<INTEGER>'"
+		  echo "Ex.: ttouch 10 --> will create 10 files"
+		  echo
+	else
+		for n in `seq 1 $1`; do
+    	dd if=/dev/urandom of=file$( printf %03d "$n" ) bs=1 count=$(( RANDOM + 1024 )) > /dev/null 2>&1
+		    done
+	      fi
+}
+
+# Write ISO image and make sure it is bootable (BIOS+EFI)
+_ddiso() {
+	if [ -z "$1" ] || [ -z "$2" ]; then
+    echo -e "Write a bootable ISO image to a drive"
+    	echo -e "\nUsage: ddiso '<INPUT>' '<OUTPUT>'"
+    	echo -e "Ex.: ddiso ./linux.iso /dev/sda"
+    	return 1
+	    elif [ "$OSTYPE" = "linux-gnu" ]; then
+		  sudo dd bs=4M if="$1" of="$2" conv=fsync oflag=direct status=progress
+	else
+		sudo dd bs=4M if="$1" of="$2" conv=fsync oflag=direct
+	    fi
+}
+
+# Print timestamp for a given command (to be piped)
+_timestamp() {
+	while read x; do echo "$(date +%Y-%m-%d\ %H\:%M\:%S): $x"; done
+}
+
+#=================
+# NNN
+#=================
+# CD on exit when pressing ^G
+_n3()
+{
+# Block nesting of nnn in subshells
+  if [ -n $NNNLVL ] && [ "${NNNLVL:-0}" -ge 1 ]; then
+    echo "nnn is already running"
+      return
+      fi
+
+# The default behaviour is to cd on quit (nnn checks if NNN_TMPFILE is set)
+# To cd on quit only on ^G, remove the "export" as in:
+#     NNN_TMPFILE="${XDG_CONFIG_HOME:-$HOME/.config}/nnn/.lastd"
+# NOTE: NNN_TMPFILE is fixed, should not be modified
+      local export NNN_TMPFILE="${XDG_CONFIG_HOME:-$HOME/.config}/nnn/.lastd"
+
+# Unmask ^Q (, ^V etc.) (if required, see `stty -a`) to Quit nnn
+# stty start undef
+# stty stop undef
+# stty lwrap undef
+# stty lnext undef
+
+      nnn -c "$@"
+
+      if [ -f "$NNN_TMPFILE" ]; then
+        . "$NNN_TMPFILE"
+          rm -f "$NNN_TMPFILE" > /dev/null
+          fi
+}
+
+#=================
+# Curl
+#=================
+
+# Get the current weather forecast
+_weather() {
+	\curl -s http://wttr.in/"$1"\?A\&F
+}
+
+# Bootstrap
+_bootstrap() {
+	/bin/bash -c "$(\curl -fsSL https://raw.githubusercontent.com/astsu777/bootstrap/master/bootstrap.sh)"
+}
+
+# Get song lyrics
+_lyrics() {
+	if [ -z "$1" ] || [ -z "$2" ]; then
+    echo -e "Get lyrics for a song"
+			echo "Usage: lyrics '<ARTIST>' '<TITLE>'"
+			echo "Ex.: lyrics 'elvis presley' 'heartbreak hotel'"
+			echo
+	else
+		\curl -s --get "https://makeitpersonal.co/lyrics" --data-urlencode "artist=$1" --data-urlencode "title=$2"
+		  fi
+}
+
+# Get cheat sheets for specified commands
+_cheat() {
+  \curl https://cheat.sh/"$1"
+}
+
+# Get cryptocurrency exchange rate
+_cryptorate() {
+	\curl https://eur.rate.sx/"$1"
+}
+_cryptorates() {
+	\curl https://eur.rate.sx/?n=20
+}
+
+# Get a Website's speed statistics
+_speedsite() {
+	if [ -z "$1" ]; then
+    echo -e "Get statistics on a Website's performances"
+			echo "Usage: speedsite '<URL>'"
+			echo "Ex.: speedsite https://www.example.com"
+			echo
+	else
+		curl -s -w 'Testing Website Response Time for: %{url_effective}\n\nLookup Time:\t\t%{time_namelookup}\nConnect Time:\t\t%{time_connect}\nAppCon Time:\t\t%{time_appconnect}\nRedirect Time:\t\t%{time_redirect}\nPre-transfer Time:\t%{time_pretransfer}\nStart-transfer Time:\t%{time_starttransfer}\n\nTotal Time:\t\t%{time_total}\n' -o /dev/null "$1"
+		  fi
+}
+
+# Check if a Website is UP
+_checkwebsite() {
+	if [ -z "$1" ]; then
+    echo -e "Print HTTP codes for a given Website"
+			echo "Usage: checkwebsite '<URL>'"
+			echo "Ex.: checkwebsite https://www.example.com"
+			echo
+	else
+    curl -LIs "$1" | grep HTTP | cut -d$' ' -f2
+    	fi
+}
+
+# Generate QR code for a given input
+_qrcodegen() {
+	if [ -z "$1" ]; then
+    echo -e "Generate a QR code for a given input"
+			echo "Usage: qrcodegen '<INPUT>'"
+			echo "Ex.: qrcodegen https://www.example.com"
+			echo "Ex.: qrcodegen Hell0 W0rld"
+			echo
+	else
+    \curl qrenco.de/"$1"
+    	fi
+}
+
+# Get the definition of a word
+_dico() {
+	if [ -z "$1" ]; then
+    echo -e "Get definitions for a word"
+			echo "Usage: dico '<INPUT>'"
+			echo "Ex.: dico example"
+			echo
+	else
+    \curl -s dict.org/d:"$1"
+    	fi
+}
+
+# Shorten a URL
+_urlshortener() {
+	if [ -z "$1" ]; then
+    echo -e "Create short URL from the CLI"
+			echo "Usage: urlshortener '<LONG_URL>'"
+			echo "Ex.: urlshortener https://www.example.com"
+			echo
+	else
+    local shorturl=$(\curl -s "https://is.gd/create.php?format=simple&url=$1") && printf "%s\n" "$shorturl"
+    	fi
+}
+
+# Deshhorten a URL
+_urldeshortener() {
+	if [ -z "$1" ]; then
+    echo -e "Get the long URL from a short one"
+			echo "Usage: urldeshortener '<SHORT_URL>'"
+			echo "Ex.: urldeshortener https://is.gd/EuvYes"
+			echo
+	else
+    curl -sLI "$1" | grep -i Location
+    	fi
+}
+
+# Have a reverse traceroute
+_tracerouterev() {
+  \curl http://icanhaztraceroute.com/
+}
+
+# IP subnet calculator
+_ipcalc() {
+	if [ -z "$1" ]; then
+    echo -e "Calculate details for an IP/IP Subnet (broadcast address, subnet mask, etc...)"
+			echo "Usage: ipcalc '<IP_ADDRESS_CIDR>'"
+			echo "Ex.: ipcalc 192.168.1.1/24"
+			echo
+	else
+    local ip=$(\curl -s "https://api.hackertarget.com/subnetcalc/?q=$1") && printf "%s\n" "$ip"
+    	fi
+}
+
+# Use Google Translate
+_trag() {
+	local sl=$1
+		local tl=$2
+		if [[ ! "$1" =~ ^[a-z][a-z]$ ]] || [[ ! "$2" =~ ^[a-z][a-z]$ ]]; then
+    	echo -e "Use Google Translate from the CLI"
+			  echo "Please input a valid source and destination language (Ex.: \"en\" for English)"
+			  echo "Usage: trag <SRC_LANG> <DEST_LANG> <TEXT_TO_TRANSLATE>"
+			  return 1
+		    fi
+		    shift 2
+		    local base_url="https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q="
+		    local ua='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+		    local qry=$( echo $@ | sed -e "s/\ /+/g" )
+		    local full_url=${base_url}${qry}
+	local response=$(\curl -sA "${ua}" "${full_url}")
+		echo ${response} | jq -r '.[0][0][0]'
+}
+
+# DNS lookup over HTTPS
+_dnslookup() {
+	if [ $# -lt 2 ]; then
+		echo -e "Perform DNS lookup over HTTPS"
+			echo -e "Usage: dnslookup <VALUE> <RECORD_TYPE>"
+			echo -e "\nExample:\ndnslookup example.com A"
+			echo -e "\nExample:\ndnslookup 1.1.1.1 PTR"
+			return 1
+			fi
+			curl -sH 'accept: application/dns-json' "https://cloudflare-dns.com/dns-query?name=$1&type=$2" | jq --raw-output '.Answer[].data'
+}
+
+#=================
+# Fuzzy Finder
+#=================
+
+
+# Find file in current folder and open it with default editor
+_fcd() {
+	fd -H . | fzf | xargs -I{} -o "$EDITOR" '{}'
+}
+
+# Find file in home folder and open it with default editor
+_fch() {
+	fd -H . "$HOME" -E vim/backup | fzf | xargs -I{} -o "$EDITOR" '{}'
+}
+
+## LINUX
+if [[ "$OSTYPE" == "linux-gnu" ]]; then
+
+# Open and follow a log file
+_flogs() {
+	sudo echo > /dev/null && sudo du -a /var/log | awk '{print$2}' | fzf | xargs I{} -o sudo tail -f '{}'
+}
+
+# Search a file and open it with the default editor
+_fcf() {
+	sudo echo > /dev/null && sudo du -a /opt /etc | awk '{print$2}' | fzf | xargs -I{} -o sudoedit '{}'
+}
+
+# If peco is installed, open a log file in it
+_plogs() {
+	sudo echo > /dev/null && sudo du -a /var/log | awk '{print$2}' | fzf | xargs -I{} -o sudo peco '{}'
+}
+
+fi
+
+
+#=================
+# OpenSSL
+#=================
+# Check SSL certificate of a Website
+_checkssl() {
+	if [ -z "$1" ]; then
+    echo -e "Print details of a Website's SSL certificate"
+			echo "Usage: checkssl '<URL>'"
+			echo "Ex.: checkssl https://www.example.com"
+			echo
+	else
+		openssl s_client -connect "$1":443 < /dev/null | openssl x509 -text
+		  fi
+}
+
+
+#=================
+# MPV
+#=================
+_yt-listen(){
+	if [ -z "$1" ]; then
+    echo -e "Listen to an online video"
+			echo "Usage: yt-listen '<URL>'"
+			echo "Ex.: yt-listen https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			echo
+	else
+		mpv --ytdl-format='ba/best' --really-quiet "$link" 2> /dev/null & disown
+			fi
+}
+
+_yt-wsd() {
+	if [ -z "$1" ]; then
+    echo -e "Watch a video in low quality"
+			echo "Usage: yt-wsd '<URL>'"
+			echo "Ex.: yt-wsd https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			echo
+	else
+		mpv --ontop --no-border --force-window --autofit=352x240 --geometry=-15-15 --ytdl-format='bv*[height<=480]+ba/b' --really-quiet --title="mpvfloating" "$1" 2>/dev/null & disown
+			fi
+}
+
+_yt-hd() {
+	if [ -z "$1" ]; then
+    echo -e "Watch a video in HD quality"
+			echo "Usage: yt-hd '<URL>'"
+			echo "Ex.: yt-hd https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			echo
+	else
+		mpv --ontop --no-border --force-window --autofit=352x240 --geometry=-15-15 --really-quiet --ytdl-format='bv*[height=1080]+ba/b' --title="mpvfloating" "$1" 2>/dev/null & disown
+			fi
+}
+
+_yt-shufsd() {
+	if [ -z "$1" ]; then
+    echo -e "Shuffle a playlist in low quality"
+			echo "Usage: yt-shufsd '<URL>'"
+			echo "Ex.: yt-shufsd https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			echo
+	else
+		mpv --ontop --no-border --force-window --autofit=352x240 --geometry=-15-15 --ytdl-format='bv*[height<=480]+ba/b' --really-quiet --ytdl --shuffle --title="mpvfloating" "$1" 2>/dev/null & disown
+			fi
+}
+
+_yt-shufhd() {
+	if [ -z "$1" ]; then
+    echo -e "Shuffle a playlist in HD quality"
+			echo "Usage: yt-shufhd '<URL>'"
+			echo "Ex.: yt-shufhd https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			echo
+	else
+		mpv --ontop --no-border --force-window --autofit=352x240 --geometry=-15-15 --ytdl-format='bv*[height=1080]+ba/b' --really-quiet --ytdl --shuffle --title="mpvfloating" "$1" 2>/dev/null & disown
+			fi
+}
+
+_yt-revsd(){
+	if [ -z "$1" ]; then
+    echo -e "Reverse a playlist in low quality"
+			echo "Usage: yt-revsd '<URL>'"
+			echo "Ex.: yt-revsd https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			echo
+	else
+		mpv --ontop --no-border --force-window --autofit=352x240 --geometry=-15-15 --ytdl-format='bv*[height<=480]+ba/b' --ytdl-raw-options-append="playlist-reverse=" --really-quiet --title="mpvfloating" "$link" 2>/dev/null & disown
+			fi
+}
+
+_yt-revhd(){
+	if [ -z "$1" ]; then
+    echo -e "Reverse a playlist in HD quality"
+			echo "Usage: yt-revhd '<URL>'"
+			echo "Ex.: yt-revhd https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			echo
+	else
+		mpv --ontop --no-border --force-window --autofit=352x240 --geometry=-15-15 --ytdl-format='bv*[height<=1080]+ba/b' --ytdl-raw-options-append="playlist-reverse=" --really-quiet --title="mpvfloating" "$link" 2>/dev/null & disown
+			fi
+}
+
+_yt-dlvideo(){
+	if [ -z "$1" ]; then
+    echo -e "Download an online video"
+			echo "Usage: yt-dlvideo '<URL>'"
+			echo "Ex.: yt-dlvideo https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			echo
+	else
+		echo -e "Video queued for download..."
+			yt-dlp -ci -f 'bv+ba/b' --add-metadata --embed-thumbnail --embed-subs "$link" -o "$HOME"/Downloads/'%(uploader)s-%(upload_date)s-%(title)s-%(id)s.%(ext)s' 2> /dev/null & disown
+			fi
+}
+
+_yt-dlaudio(){
+	if [ -z "$1" ]; then
+    echo -e "Extract audio of an online video"
+			echo "Usage: yt-dlaudio '<URL>'"
+			echo "Ex.: yt-dlaudio https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+			echo
+	else
+		echo -e "Audio queued for download..."
+			yt-dlp -ci --add-metadata --extract-audio --audio-format mp3 --audio-quality 0 "$link" -o "$HOME"/Downloads/'%(uploader)s-%(upload_date)s-%(title)s-%(id)s.%(ext)s' 2> /dev/null & disown
+			fi
+}
+
+#=======================
+# Wget
+#=======================
+_wget-files() {
+  if [ $# -lt 2 ]; then
+    echo -e "Download all files with specific extension on a webpage"
+    	echo -e "\nUsage: wget-files <FILE_EXTENSION> <URL>"
+    	echo -e "\nExample:\nwget-files mp4,ogg,wma http://example.com/files/"
+    	return 1
+  	  fi
+  	  outputdir_name=$(echo "$2" | rev | cut -d\/ -f2 | rev)
+  	  mkdir -pv "$outputdir_name" >/dev/null 2>&1
+  	  echo -e "Downloading files from Website..."
+  	  cd "$outputdir_name" && wget --no-check-certificate --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" --random-wait -nd -r -l1 -H -t1 -N -np -A "$1" -e robots=off "$2" >/dev/null 2>&1
+}
+
+_wget-audio() {
+  if [ $# -lt 1 ]; then
+    echo -e "Download all audio files on a webpage"
+    	echo -e "\nUsage: wget-audio <URL>"
+    	echo -e "\nExample:\nwget-audio http://example.com/music/"
+    	return 1
+  	  fi
+  	  outputdir_name=$(echo "$1" | rev | cut -d\/ -f2 | rev)
+  	  mkdir -pv "$outputdir_name" >/dev/null 2>&1
+  	  echo -e "Downloading audio files from Website..."
+  	  cd "$outputdir_name" && wget --no-check-certificate --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" --random-wait -nd -r -l1 -H -t1 -N -np -A "mp3,ogg,wma,flac,aac" -e robots=off "$1" >/dev/null 2>&1
+}
+
+_wget-images() {
+  if [ $# -lt 1 ]; then
+    echo -e "Download all images on a webpage"
+    	echo -e "\nUsage: wget-images <URL>"
+    	echo -e "\nExample:\nwget-images http://example.com/pictures/"
+    	return 1
+  	  fi
+  	  outputdir_name=$(echo "$1" | rev | cut -d\/ -f2 | rev)
+  	  mkdir -pv "$outputdir_name" >/dev/null 2>&1
+  	  echo -e "Downloading pictures from Website..."
+  	  cd "$outputdir_name" && wget --no-check-certificate --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" --random-wait -nd -r -l1 -H -t1 -N -np -A "jpg,jpeg,png,bmp,gif,webp,tiff,svg,avif,apng" -e robots=off "$1" >/dev/null 2>&1
+}
+
+_wget-save() {
+  if [ $# -lt 1 ]; then
+    echo -e "Mirror a full Website recursively"
+    	echo -e "\nUsage: wget-save <URL>"
+    	echo -e "\nExample:\nwget-save http://example.com/"
+    	return 1
+  	  fi
+  	  outputdir_name=$(echo "$1" | rev | cut -d\/ -f2 | rev)
+  	  mkdir -pv "$outputdir_name" >/dev/null 2>&1
+  	  echo -e "Mirrorring Website..."
+  	  cd "$outputdir_name" && wget --no-check-certificate -m -E -k -p -e robots=off -np --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" --random-wait "$1" >/dev/null 2>&1
+}
+
+_wget-save-recursive() {
+  if [ $# -lt 1 ]; then
+    echo -e "Mirror a full Website recursively"
+    	echo -e "\nUsage: wget-save-recursive <EXCLUDE_DOMAINS> <URL>"
+    	echo -e "\nExample:\nwget-save-recursive www.instagram.com,twitter.com http://example.com/"
+    	return 1
+  	  fi
+  	  outputdir_name=$(echo "$2" | rev | cut -d\/ -f2 | rev)
+  	  mkdir -pv "$outputdir_name" >/dev/null 2>&1
+  	  echo -e "Mirrorring Website..."
+  	  cd "$outputdir_name" && wget --no-check-certificate -m -E -H -k -p -e robots=off -np --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" --random-wait -D "$1" "$2" >/dev/null 2>&1
+}
+#=================
+# Colors
+#=================
+## Parse RGB hex tuples.
+## <Arg 1> - Hex: Input hex value [[:xdigit]]{6}
+## <Arg 2> - String: Tuple [r|g|b]
+_get_rgbtuple() {
+	local hexrgb="${1}"
+	  local tuple_flag="${2}"
+	  local tuple_fmt="${3:-x}"
+	  local tuple=""
+	case "${tuple_flag}" in
+ 	  r|R)
+  	  tuple=${hexrgb:0:2}
+  	;;
+ 	  g|G)
+  	  tuple=${hexrgb:2:2}
+  	;;
+ 	  b|B)
+  	  tuple=${hexrgb:4:2}
+  	;;
+	  esac
+	    echo $((0x${tuple}))
+}
+
+_get_rgb() {
+	local -i ansi=${1:-1}
+	local -a rgb=("000000" "800000" "008000" "808000" "000080"     \
+	    "800080" "008080" "c0c0c0" "808080" "ff0000" "00ff00" "ffff00" \
+	    "0000ff" "ff00ff" "00ffff" "ffffff" "000000" "00005f" "000087" \
+	    "0000af" "0000d7" "0000ff" "005f00" "005f5f" "005f87" "005faf" \
+	    "005fd7" "005fff" "008700" "00875f" "008787" "0087af" "0087d7" \
+	    "0087ff" "00af00" "00af5f" "00af87" "00afaf" "00afd7" "00afff" \
+	    "00d700" "00d75f" "00d787" "00d7af" "00d7d7" "00d7ff" "00ff00" \
+	    "00ff5f" "00ff87" "00ffaf" "00ffd7" "00ffff" "5f0000" "5f005f" \
+	    "5f0087" "5f00af" "5f00d7" "5f00ff" "5f5f00" "5f5f5f" "5f5f87" \
+	    "5f5faf" "5f5fd7" "5f5fff" "5f8700" "5f875f" "5f8787" "5f87af" \
+	    "5f87d7" "5f87ff" "5faf00" "5faf5f" "5faf87" "5fafaf" "5fafd7" \
+	    "5fafff" "5fd700" "5fd75f" "5fd787" "5fd7af" "5fd7d7" "5fd7ff" \
+	    "5fff00" "5fff5f" "5fff87" "5fffaf" "5fffd7" "5fffff" "870000" \
+	    "87005f" "870087" "8700af" "8700d7" "8700ff" "875f00" "875f5f" \
+	    "875f87" "875faf" "875fd7" "875fff" "878700" "87875f" "878787" \
+	    "8787af" "8787d7" "8787ff" "87af00" "87af5f" "87af87" "87afaf" \
+	    "87afd7" "87afff" "87d700" "87d75f" "87d787" "87d7af" "87d7d7" \
+	    "87d7ff" "87ff00" "87ff5f" "87ff87" "87ffaf" "87ffd7" "87ffff" \
+	    "af0000" "af005f" "af0087" "af00af" "af00d7" "af00ff" "af5f00" \
+	    "af5f5f" "af5f87" "af5faf" "af5fd7" "af5fff" "af8700" "af875f" \
+	    "af8787" "af87af" "af87d7" "af87ff" "afaf00" "afaf5f" "afaf87" \
+	    "afafaf" "afafd7" "afafff" "afd700" "afd75f" "afd787" "afd7af" \
+	    "afd7d7" "afd7ff" "afff00" "afff5f" "afff87" "afffaf" "afffd7" \
+	    "afffff" "d70000" "d7005f" "d70087" "d700af" "d700d7" "d700ff" \
+	    "d75f00" "d75f5f" "d75f87" "d75faf" "d75fd7" "d75fff" "d78700" \
+	    "d7875f" "d78787" "d787af" "d787d7" "d787ff" "dfaf00" "dfaf5f" \
+	    "dfaf87" "dfafaf" "dfafdf" "dfafff" "dfdf00" "dfdf5f" "dfdf87" \
+	    "dfdfaf" "dfdfdf" "dfdfff" "dfff00" "dfff5f" "dfff87" "dfffaf" \
+	    "dfffdf" "dfffff" "ff0000" "ff005f" "ff0087" "ff00af" "ff00df" \
+	    "ff00ff" "ff5f00" "ff5f5f" "ff5f87" "ff5faf" "ff5fdf" "ff5fff" \
+	    "ff8700" "ff875f" "ff8787" "ff87af" "ff87df" "ff87ff" "ffaf00" \
+	    "ffaf5f" "ffaf87" "ffafaf" "ffafdf" "ffafff" "ffdf00" "ffdf5f" \
+	    "ffdf87" "ffdfaf" "ffdfdf" "ffdfff" "ffff00" "ffff5f" "ffff87" \
+	    "ffffaf" "ffffdf" "ffffff" "080808" "121212" "1c1c1c" "262626" \
+	    "303030" "3a3a3a" "444444" "4e4e4e" "585858" "626262" "6c6c6c" \
+	    "767676" "808080" "8a8a8a" "949494" "9e9e9e" "a8a8a8" "b2b2b2" \
+	    "bcbcbc" "c6c6c6" "d0d0d0" "dadada" "e4e4e4" "eeeeee")
+	    if ((ansi<=256)); then
+ 	 	    printf "%s\n" "${rgb[${ansi}]}"
+ 	 	      return 0
+	    else
+ 	 	    return 1
+	        fi
+}
+
+_colorpick() {
+	local -i i=0
+	  local rgb_R
+	  local rgb_G
+	  local rgb_B
+	  local prgb_R
+	  local prgb_G
+	  local prgb_B
+	  local hex
+	  for i in {0..255}; do
+		  hex=$(get_rgb "${i}")
+		    rgb_R=$(get_rgbtuple "${hex}" "r")
+		    rgb_G=$(get_rgbtuple "${hex}" "g")
+		    rgb_B=$(get_rgbtuple "${hex}" "b")
+		    prgb_R=$(printf "%3s" "${rgb_R}")
+		    prgb_G=$(printf "%3s" "${rgb_G}")
+		    prgb_B=$(printf "%3s" "${rgb_B}")
+		    printf "\x1b[38;5;${i}mANSI COLOR: %3s\x1b[0m |" "${i}"
+		    printf "\x1b[38;2;${rgb_R};${rgb_G};${rgb_B}mRGB/TRUECOLOR - RGB:%s,%s,%s\x1b[0m%s" "${prgb_R}" "${prgb_G}" "${prgb_B}" " |"
+		    printf "\x1b[38;5;40m%s%s\n\x1b[0m" "HEX:0x" "${hex}"
+	      done
+}

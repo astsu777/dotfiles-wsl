@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+#=========================================================================
+# Author: Gaetan (gaetan@ictpourtous.com) - Twitter: @astsu777
+# Creation: Sun 22 Aug 2021 12:10:21
+# Last modified: Fri 26 May 2023 13:06:26
+# Version: 1.0
+#
+# Description: listen to online radio
+#=========================================================================
+
+#=======================
+# Functions
+#=======================
+
+notify() {
+	if type notify-send >/dev/null 2>&1; then notify-send "$*"; fi
+	printf '%s\n' "$*"
+}
+
+checkReq(){
+	if ! type dmenu >/dev/null 2>&1; then notify "Warning" "The package 'dmenu' is not installed. Switching to FZF in CLI."; fi
+	if ! type fzf >/dev/null 2>&1; then printf "The package 'fzf' is currently not installed!" && exit 1; fi
+	if type mpv >/dev/null 2>&1; then mpv=1; fi
+}
+
+getRadio(){
+	if ! type dmenu >/dev/null 2>&1; then
+		radio=$(printf "%s\n" "${!radios[@]}" | sort | fzf -i --prompt 'Choose a station:') "$@" || exit
+	else
+		radio=$(printf "%s\n" "${!radios[@]}" | sort | dmenu -i -l 30 -p 'Choose a station:') "$@" || exit
+	fi
+	station="${radios["${radio}"]}"
+}
+
+listenRadio(){
+	if [ "$(uname)" = "Darwin" ]; then
+		if [ -n "$mpv" ]; then
+			if pgrep -f mpvradio > /dev/null 2>&1; then pkill -f mpvradio; elif [ "$station" == "Stop Playing" ]; then pkill -f mpvradio; fi
+			mpv --cache=yes --really-quiet --title=mpvradio "$station" 2> /dev/null & disown
+		else
+			open "$station"
+		fi
+	else
+		if [ -n "$mpv" ]; then
+			if pgrep -f mpvradio > /dev/null 2>&1; then pkill -f mpvradio; elif [ "$station" == "Stop Playing" ]; then pkill -f mpvradio; fi
+			mpv --cache=yes --really-quiet --title=mpvradio "$station" 2> /dev/null & disown
+		else
+			xdg-open "$station"
+		fi
+	fi
+}
+
+#=======================
+# Radios
+#=======================
+
+declare -A radios
+
+radios[Blues Music Fan Radio]="http://ais-sa2.cdnstream1.com/1992_128.mp3"
+radios[Chillhop Radio]="http://hyades.shoutca.st:8043/stream"
+radios[Driveradio]="http://listen.radionomy.com/driveradio.m3u"
+radios[Hotmix Radio - Classical]="https://streaming.hotmixradio.fr/hotmixradio-classical-128.mp3"
+radios[Hotmix Radio - Funky]="https://streaming.hotmixradio.fr/hotmixradio-funky-128.mp3"
+radios[Hotmix Radio - Lounge]="http://streaming.hotmixradio.fr/hotmixradio-lounge-128.mp3"
+radios[Hotmix Radio - Platinum]="http://streaming.hotmixradio.fr/hotmixradio-platinum-128.mp3"
+radios[I Love Chillhop]="https://streams.ilovemusic.de/iloveradio17.mp3"
+radios[Lofi 24/7]="http://usa9.fastcast4u.com/proxy/jamz?mp=/1"
+radios[Lofi Girl - Chillhop Radio]="https://www.youtube.com/watch?v=jfKfPfyJRdk"
+radios[Lofi Girl - Synthwave Radio]="https://www.youtube.com/watch?v=MVPTGNGiI-4"
+radios[Musopen - Classical]="https://live.musopen.org:8085/streamvbr0"
+radios[Nightride]="https://stream.nightride.fm/nightride.m4a"
+radios[Radiomeuh]="http://radiomeuh.ice.infomaniak.ch/radiomeuh-128.mp3"
+radios[Radiorecord - Synthwave]="http://air.radiorecord.ru:805/synth_320"
+radios[Stop Playing]=""
+radios[Studio Brussels]="http://icecast.vrtcdn.be/stubru-high.mp3"
+radios[Synthwave]="https://ecast.myautodj.com/public1channel"
+
+#=======================
+# Choose and listen to radio
+#=======================
+
+checkReq
+getRadio "$@"
+listenRadio
+exit 0

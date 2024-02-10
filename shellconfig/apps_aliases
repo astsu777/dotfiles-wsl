@@ -1,0 +1,63 @@
+# Attach or create a TMUX session with username as session name
+alias t="tmux attach-session -t "$USER"0 || tmux new-session -s "$USER"0"
+
+# Display time and date at the top right corner of the terminal
+alias clock='while sleep 1;do tput sc;tput cup 0 $(($(tput cols)-25));date +"%a %b %d %H:%M:%S %Y";tput rc;done &'
+
+# Display the PATH in a human readable format
+alias path='echo -e ${PATH//:/\\n}'
+
+# Quickly launch a Web server
+alias web-server="php -S localhost:8888 &"
+
+# Get the current public IP address
+alias getpublicip="\curl -s https://ipinfo.io/ip"
+alias getpublicipinfo="\curl -s https://ipinfo.io"
+
+# Generate random secure passwords of 64 characters
+alias pwgen-secure="pwgen -syBcn 64"
+
+# Search in the shell history specified input
+alias his='history | grep $1'
+
+# Scan the current network and provides IP addresses that replies to PING
+alias ipscan="nmap -sP --scan-delay 0.5"
+
+# Perform iPerf speedtests on the different continents
+alias wan-speedtest-eu="iperf3 -c bouygues.iperf.fr -p 5201 -P 20"
+alias wan-speedtest-as="iperf3 -c iperf.biznetnetworks.com -p 5201 -P 20"
+alias wan-speedtest-us="iperf3 -c iperf.he.net -p 5201 -P 20"
+
+# Update systems globally and check if a reboot is necessary whenever possible
+alias update-system='sudo apt update && sudo apt upgrade && sudo apt full-upgrade && sudo apt autoremove --purge && sudo apt autoclean && sudo apt clean && { test -f /var/run/reboot-required && echo -e "$FILE \033[31mA reboot is required to apply all updates"; }'
+
+# Use the common alias 'll' to display files with exa
+alias ll="lsd -lah --icon always --color always --group-directories-first"
+
+# Make 'yt-dlp' easier to use
+alias yt-audio="yt-dlp -i --extract-audio --audio-format mp3 --audio-quality 0"
+
+# If the program "neovim" is installed, replace "vim" with it
+# Also, adds an alias to launch it without any configuration
+alias vim="nvim"
+alias vvim="nvim -u NONE"
+
+# Task spooler
+alias ts="tsp"
+
+# Display calendar
+alias cal="cal -m -w -3"
+
+#=======================
+# Work
+#=======================
+
+# Get a list of all media types defined by IANA
+alias mimetypes="$BROWSERCLI https://www.iana.org/assignments/media-types/media-types.txt"
+
+# Plow - HTTP benchmarking tool
+plow="docker run --rm --net=host ghcr.io/six-ddc/plow"
+
+# mitmproxy
+alias mitmproxy="mitmproxy --set confdir=$XDG_CONFIG_HOME/mitmproxy"
+alias mitmweb="mitmweb --set confdir=$XDG_CONFIG_HOME/mitmproxy"

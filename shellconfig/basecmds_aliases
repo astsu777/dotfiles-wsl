@@ -1,0 +1,2 @@
+# If the program "bat" is installed, replace "cat" with it
+alias cat="highlight -O ansi --force"

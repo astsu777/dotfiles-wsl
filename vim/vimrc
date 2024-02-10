@@ -1,0 +1,456 @@
+"=============
+" Global Variables
+"=============
+
+" Detect OS type (useful to define OS specific options)
+" Linux will be referenced as 'Linux'. MacOS will be referenced as 'Darwin'
+if !exists('g:os')
+    if has('win32') || has('win16')
+        let g:os = 'Windows'
+    else
+        let g:os = substitute(system('uname'), '\n', '', '')
+    endif
+endif
+
+"=============
+" Plugins Installation
+"=============
+
+" Vim-plug plugin manager auto-installation
+if empty(glob('~/.vim/autoload/plug.vim'))
+	silent !curl -fLo ~/.vim/autoload/plug.vim --create-dirs
+		\ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+	autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
+endif
+
+" Auto-install plugins if not installed
+autocmd VimEnter *
+  \  if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
+  \|   PlugInstall --sync | q
+  \| endif
+call plug#begin('~/.vim/bundle')
+  " Colorscheme
+  Plug 'sainnhe/gruvbox-material'
+  Plug 'dracula/vim', { 'as': 'dracula' }
+  Plug 'joshdick/onedark.vim', { 'as': 'onedark' }
+  Plug 'arcticicestudio/nord-vim'
+  Plug 'romgrk/doom-one.vim'
+  Plug 'pineapplegiant/spaceduck', { 'branch': 'main' }
+  Plug 'rafalbromirski/vim-aurora'
+  Plug 'google/vim-colorscheme-primary'
+	" Linters
+	Plug 'chr4/nginx.vim'
+	" Status bar
+	Plug 'itchyny/lightline.vim'
+	" File browser
+	Plug 'scrooloose/nerdtree'
+	" Easily comment lines with 'gcc' for a line, 'gcap' for a paragraph, etc...
+	" Custom comment string can be implemented with the following:
+	" autocmd FileType apache setlocal commentstring=#\ %s
+	Plug 'tpope/vim-commentary'
+	" Easily modify surrounding of a text with 'cs' followed by surrounds. 'ds' deletes surroundings
+	Plug 'tpope/vim-surround'
+	Plug 'tpope/vim-repeat'
+	" Center the text for distraction free typing
+	Plug 'junegunn/goyo.vim'
+	" Colorize color codes
+	Plug 'lilydjwg/colorizer'
+	" Match sections begin/end (like if/fi) using '%' and 'g%'
+	Plug 'https://github.com/adelarsq/vim-matchit'
+	" Fuzzy Finder
+	set rtp+=~/.vim/bundle/fzf
+	Plug 'junegunn/fzf'
+	Plug 'junegunn/fzf.vim'
+	" Bulk rename files
+	Plug 'qpkorr/vim-renamer'
+	" Run commands in the background
+	Plug 'skywind3000/asyncrun.vim'
+call plug#end()
+filetype plugin indent on
+
+"=============
+" Key Bindings
+"=============
+
+" Change the leader key to comma
+let mapleader=","
+
+" Reload VIM's configuration
+nnoremap <leader>r :source $MYVIMRC<CR>
+
+" Assign keyboard shortcuts to easily resize VIM windows
+nnoremap <silent> <leader>+ :exe "resize " . (winheight(0) * 3/2)<CR>
+nnoremap <silent> <leader>- :exe "resize " . (winheight(0) * 2/3)<CR>
+nnoremap <leader>_ <C-w>=
+
+" Shortcutting window navigation
+nnoremap <C-h> <C-w>h
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+nnoremap <C-l> <C-w>l
+
+" Configure the "+ register to be used with TMUX
+" The ^ sign allows to copy to TMUX buffer
+set clipboard^="+
+noremap <leader>y "+y
+noremap <leader>p "+p
+
+" Quickly move around document
+noremap <silent> K 10j
+noremap <silent> L 10k
+
+" Spell-check set to <leader>o, 'o' for 'orthography'. It defaults to American English but
+" an additional letter to the shortcut can simply be added for other languages
+map <leader>o :setlocal spell! spelllang=en_us<CR>
+map <leader>of :setlocal spell! spelllang=fr_fr<CR>
+
+" Toggle the quickfix window
+function! ToggleQuickFix()
+	if empty(filter(getwininfo(), 'v:val.quickfix'))
+		copen
+	else
+		cclose
+	endif
+endfunction
+noremap <leader>q :call ToggleQuickFix()<CR>
+
+"=============
+" Configuration
+"=============
+
+" Store .viminfo in different location
+set viminfo+=n$HOME/.vim/viminfo
+
+" Organize backups, swaps and undo files
+set undodir=$HOME/.vim/undo//
+set undofile
+set backupdir=$HOME/.vim/backup//
+set directory=$HOME/.vim/swap//
+
+" Create a backup file and delete old backup if existing
+set backup
+set writebackup
+
+" Search find recursively with the 'find' command
+set path+=**
+
+" Do not create .netrwhist file
+let g:netrw_dirhistmax=0
+
+" Enable autocompletion of commands
+set wildmode=longest,list,full
+
+" Allow applying a macro to selected lines in visual mode
+xnoremap @ :<C-u>call ExecuteMacroOverVisualRange()<CR>
+function! ExecuteMacroOverVisualRange()
+  echo "@".getcmdline()
+  execute ":'<,'>normal @".nr2char(getchar())
+endfunction
+
+" Text wrapping
+" For text file, wrap all the text
+autocmd FileType text setlocal textwidth=121 formatoptions=t
+" For all other files, wrap comments but not the text
+autocmd FileType * setlocal textwidth=121 formatoptions=c
+
+" Resize buffers when window changes sizes
+autocmd VimResized * execute "normal! \<c-w>="
+
+" Trigger `autoread` when files changes on disk
+autocmd FocusGained,BufEnter,CursorHold,CursorHoldI * if mode() != 'c' | checktime | endif
+autocmd FileChangedShellPost * echohl WarningMsg | echo "File changed on disk. Buffer reloaded." | echohl None
+
+" Hexdump current file and open its output (to use with binaries)
+nnoremap <leader>bb :%!xxd<Enter>
+
+" Disable mouse support
+set mouse=
+
+"=============
+" Look & Feel
+"=============
+
+" Splits open at bottom and on the right (override defaults)
+" Shortcuts also to create normal and vertical splits
+set splitbelow splitright
+nnoremap <leader>h :split<Space>
+nnoremap <leader>v :vsplit<Space>
+
+" Enable syntax highlighting
+syntax on
+let s:syntax = 1
+function ToggleSyntax()
+    if s:syntax == 1
+        syntax off
+		let s:syntax = 0
+		highlight Comment cterm=italic gui=italic
+		highlight Normal guibg=NONE ctermbg=NONE
+		highlight EndOfBuffer guibg=NONE ctermbg=NONE
+    else
+        syntax on
+		let s:syntax = 1
+		highlight Comment cterm=italic gui=italic
+		highlight Normal guibg=NONE ctermbg=NONE
+		highlight EndOfBuffer guibg=NONE ctermbg=NONE
+    endif
+endfunction
+nnoremap <leader><F2> <Esc>:call ToggleSyntax()<Enter>
+
+" Set encoding to UTF-8
+set encoding=utf-8
+set fileencoding=utf-8
+
+" Color and theme setup
+if empty($SSH_CLIENT)
+	set termguicolors
+endif
+colorscheme kuroi
+highlight Comment cterm=italic gui=italic
+highlight Normal guibg=NONE ctermbg=NONE
+highlight EndOfBuffer guibg=NONE ctermbg=NONE
+function ToggleColors()
+    if (g:colors_name == "kuroi")
+        colorscheme primary
+		highlight Comment cterm=italic gui=italic
+		highlight Normal guibg=NONE ctermbg=NONE
+		highlight EndOfBuffer guibg=NONE ctermbg=NONE
+		let g:lightline = {'colorscheme': 'jellybeans'}
+		call lightline#init()
+		call lightline#colorscheme()
+		set t_Co=256
+    set background=light
+    elseif (g:colors_name == "aurora")
+        colorscheme kuroi
+		highlight Comment cterm=italic gui=italic
+		highlight Normal guibg=NONE ctermbg=NONE
+		highlight EndOfBuffer guibg=NONE ctermbg=NONE
+		let g:lightline = {'colorscheme': 'jellybeans'}
+		call lightline#init()
+		call lightline#colorscheme()
+    elseif (g:colors_name == "spaceduck")
+        colorscheme aurora
+		highlight Comment cterm=italic gui=italic
+		highlight Normal guibg=NONE ctermbg=NONE
+		highlight EndOfBuffer guibg=NONE ctermbg=NONE
+		let g:lightline = {'colorscheme': 'jellybeans'}
+		call lightline#init()
+		call lightline#colorscheme()
+    elseif (g:colors_name == "doom-one")
+        colorscheme spaceduck
+		highlight Comment cterm=italic gui=italic
+		highlight Normal guibg=NONE ctermbg=NONE
+		highlight EndOfBuffer guibg=NONE ctermbg=NONE
+		let g:lightline = {'colorscheme': 'spaceduck'}
+		call lightline#init()
+		call lightline#colorscheme()
+    elseif (g:colors_name == "nord")
+        colorscheme doom-one
+		highlight Comment cterm=italic gui=italic
+		highlight Normal guibg=NONE ctermbg=NONE
+		highlight EndOfBuffer guibg=NONE ctermbg=NONE
+		let g:lightline = {'colorscheme': 'jellybeans'}
+		call lightline#init()
+		call lightline#colorscheme()
+    elseif (g:colors_name == "onedark")
+        colorscheme nord
+		highlight Comment cterm=italic gui=italic
+		highlight Normal guibg=NONE ctermbg=NONE
+		highlight EndOfBuffer guibg=NONE ctermbg=NONE
+		let g:lightline = {'colorscheme': 'nord'}
+		call lightline#init()
+		call lightline#colorscheme()
+    elseif (g:colors_name == "dracula")
+        colorscheme onedark
+		highlight Comment cterm=italic gui=italic
+		highlight Normal guibg=NONE ctermbg=NONE
+		highlight EndOfBuffer guibg=NONE ctermbg=NONE
+		let g:lightline = {'colorscheme': 'onedark'}
+		call lightline#init()
+		call lightline#colorscheme()
+    elseif (g:colors_name == "gruvbox-material")
+        colorscheme dracula
+		highlight Comment cterm=italic gui=italic
+		highlight Normal guibg=NONE ctermbg=NONE
+		highlight EndOfBuffer guibg=NONE ctermbg=NONE
+		let g:lightline = {'colorscheme': 'dracula'}
+		call lightline#init()
+		call lightline#colorscheme()
+    else
+        colorscheme gruvbox-material
+		highlight Comment cterm=italic gui=italic
+		highlight Normal guibg=NONE ctermbg=NONE
+		highlight EndOfBuffer guibg=NONE ctermbg=NONE
+		let g:lightline.colorscheme = 'gruvbox_material'
+		call lightline#init()
+		call lightline#colorscheme()
+    endif
+endfunction
+nnoremap <leader><F1> <Esc>:call ToggleColors()<Enter>
+
+" Enable status line
+set laststatus=2
+
+" Auto-indent the text (tabs only used for indentation)
+filetype indent on
+set expandtab
+set copyindent
+set preserveindent
+set softtabstop=0
+set shiftwidth=2
+set tabstop=2
+
+" Enable a visual menu when using TAB autocomplete in command mode
+set wildmenu
+
+" Disable screen update when executing macros, registers and other commands
+" This really speeds up macros' execution
+set lazyredraw
+
+" Search as soon as some characters are typed and don't highlight all search results
+" and highlight matching parenthesis, brackets, etc...
+set incsearch
+set nohlsearch
+set showmatch
+
+" Ignore case sensitivity when searching EXCEPT if an upper case letter is in
+" the search pattern
+set ignorecase
+set smartcase
+
+" Include line numbers & their relative number for navigation
+set number relativenumber
+
+" Highlight the line where the cursor is (disable it if scrolling feels slow)
+set cursorline
+
+" Do not show mode at the bottom
+set noshowmode
+
+" Set window title to current file
+set title
+
+" Disable intro message when VIM starts
+set shortmess+=I
+
+" Fold color
+hi Folded cterm=bold ctermfg=DarkBlue ctermbg=none
+hi FoldColumn cterm=bold ctermfg=DarkBlue ctermbg=none
+
+"=============
+" Plugins Configuration
+"=============
+
+" Nerd tree & close VIM if NerdTree is the only window opened
+map <leader>n :NERDTreeToggle<CR>
+autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTree") && b:NERDTree.isTabTree()) | q | endif
+
+" Renamer
+nnoremap <leader>rr :Renamer<CR>
+
+" Goyo
+map <leader>f :Goyo 70%x70% \| set linebreak<CR>
+map <leader>ff :Goyo! \| set nolinebreak<CR>
+
+" Colorizer
+let g:colorizer_fgcontrast = 1
+let g:colorizer_nomap = 1
+let g:colorizer_maxlines = 1000
+nmap <leader>tc <Plug>Colorizer
+
+" FZF
+nnoremap <leader>F :Files<CR>
+nnoremap <leader>R :Rg!<space>
+nnoremap <leader>O :Buffers<CR>
+
+" Save file as sudo on files that require root permission
+cnoremap w!! execute 'silent! write !sudo tee % >/dev/null' <bar> edit!
+
+" Lightline
+let g:lightline = {'colorscheme': 'jellybeans'}
+let s:status_bar = 1
+function ToggleStatusBar()
+	if (s:status_bar == 0)
+			let s:status_bar = 1
+        set noshowmode
+        set noruler
+        set laststatus=0
+        set noshowcmd
+    else
+        let s:status_bar = 0
+        set showmode
+        set ruler
+        set laststatus=2
+        set showcmd
+    endif
+endfunction
+nnoremap <leader>h :call ToggleStatusBar()<CR>
+
+" AsyncRun
+" Open the quickfix window when running command
+let g:asyncrun_open = 8
+" Close the quickfix window if no errors after some time
+let g:asyncrun_exit = 'call timer_start(2000, {-> execute("cclose")})'
+
+"=============
+" Auto-Commands
+"=============
+
+" Properly set filetype
+autocmd BufRead,BufNewFile Xresources,Xdefaults,xresources,xdefaults set filetype=xdefaults
+autocmd BufRead,BufNewFile *.ms,*.me,*.mom,*.man set filetype=groff
+autocmd BufRead,BufNewFile *.tex set filetype=tex
+
+" Automatically deletes all trailing whitespace on save
+autocmd BufWritePre * %s/\s\+$//e
+
+" Disable auto-commenting on new lines
+autocmd FileType * setlocal formatoptions-=cro
+map <leader>C :setlocal formatoptions+=cro<CR>
+map <leader>Cd :setlocal formatoptions-=cro<CR>
+
+" Turns off highlighting on the bits of code that are changed, so the line that is changed is highlighted but the actual text that has changed stands out on the line and is readable.
+if &diff
+    highlight! link DiffText MatchParen
+endif
+
+"=============
+" Code Snippets
+"=============
+
+" Guide Navigation
+map ;g <++>
+noremap <leader><Space> <Esc>/<++><Enter>"_c4l
+vnoremap <leader><Space> <Esc>/<++><Enter>"_c4l
+inoremap <leader><leader><Space> <Esc>/<++><Enter>"_c4l
+
+" General
+inoremap ;lo Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.<CR>
+
+" Insert a block of comment
+inoremap ;bl #=======================<CR>#<Space><CR>#=======================<CR><++><Esc>2kA
+
+" Header
+function Header() abort
+	execute "normal! i#=========================================================================\<cr>"
+	execute "normal! i# Author: Gaetan (gaetan@ictpourtous.com) - Twitter: @astsu777\<cr>"
+	execute "normal! i# Creation: \<c-r>=strftime('%a %d %b %Y %H:%M:%S')\<cr>\<cr>"
+	execute "normal! i# Last modified: \<c-r>=strftime('%a %d %b %Y %H:%M:%S')\<cr>\<cr>"
+	execute "normal! i# Version: 1.0\<cr>"
+	execute "normal! i#\<cr>"
+	execute "normal! i# Description: <++>\<cr>"
+	execute "normal! i#=========================================================================\<cr>"
+	execute "normal! i\<cr>"
+	execute "normal! i<++>"
+	execute "normal! /<++>\<cr>\"_c4l"
+endfunction
+inoremap ;hh <Esc>:call Header()<Enter>
+
+"=============
+" Scripts
+"=============
+
+" Compile document
+map <leader>c :w! \| AsyncRun compiler "<c-r>%"<CR>
+
+" Open corresponding .pdf/.html or preview
+map <leader>P :!opout <c-r>%<CR><CR>
